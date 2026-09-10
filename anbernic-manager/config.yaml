@@ -1,5 +1,5 @@
 name: "Anbernic Manager"
-version: "0.1.2"
+version: "0.1.3"
 slug: "anbernic-manager"
 description: "Scrape metadata & artwork for your Anbernic/Knulli ROM library via ScreenScraper, from a web UI."
 url: "https://github.com/duarte-hub/anbernic-manager-ha"
@@ -17,8 +17,16 @@ panel_title: "Anbernic Manager"
 # Needed so the app can mount your Knulli SMB share itself with `mount -t
 # cifs` (see README). If you only ever use "local path" mode -- i.e. you
 # bind the ROMs folder in yourself under /share or /media -- you can
-# remove `full_access` and add the granular map entries below instead.
+# remove `full_access` and `apparmor` and add the granular map entries
+# below instead.
+#
+# `apparmor: false` is required in addition to `full_access` -- Supervisor
+# still applies its default AppArmor profile on top of full_access, and
+# that profile blocks the `capset` syscall mount.cifs needs internally,
+# which surfaces as "mount failed (exit 2): Unable to apply new
+# capability set."
 full_access: true
+apparmor: false
 
 map:
   - type: share

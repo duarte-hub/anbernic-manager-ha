@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Fix `mount failed (exit 2): Unable to apply new capability set` when
+  mounting an SMB share: Supervisor's default AppArmor profile blocks
+  the `capset` syscall `mount.cifs` needs even under `full_access`.
+  Added `apparmor: false` to config.yaml.
+
 ## 0.1.2
 
 - Fix `{"detail":"Not Found"}` on the root page specifically when
