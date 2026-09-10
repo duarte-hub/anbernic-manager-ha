@@ -1,5 +1,5 @@
 name: "Anbernic Manager"
-version: "0.1.5"
+version: "0.1.6"
 slug: "anbernic-manager"
 description: "Scrape metadata & artwork for your Anbernic/Knulli ROM library via ScreenScraper, from a web UI."
 url: "https://github.com/duarte-hub/anbernic-manager-ha"
@@ -15,10 +15,7 @@ panel_icon: mdi:gamepad-variant-outline
 panel_title: "Anbernic Manager"
 
 # Needed so the app can mount your Knulli SMB share itself with `mount -t
-# cifs` (see README). If you only ever use "local path" mode -- i.e. you
-# bind the ROMs folder in yourself under /share or /media -- you can
-# remove `privileged` and `apparmor` and add the granular map entries
-# below instead.
+# cifs` (see README).
 #
 # SYS_ADMIN is what the mount() syscall itself requires; DAC_READ_SEARCH
 # and apparmor: false are what mount.cifs needs internally to drop
@@ -36,10 +33,6 @@ privileged:
 apparmor: false
 
 map:
-  - type: share
-    read_only: false
-  - type: media
-    read_only: false
   - type: data
     read_only: false
 

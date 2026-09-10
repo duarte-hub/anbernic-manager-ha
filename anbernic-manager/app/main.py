@@ -127,8 +127,6 @@ async def on_startup() -> None:
 class SettingsIn(BaseModel):
     screenscraper_username: str | None = None
     screenscraper_password: str | None = None
-    source_type: str | None = None
-    local_path: str | None = None
     smb_host: str | None = None
     smb_share: str | None = None
     smb_username: str | None = None

@@ -20,8 +20,6 @@ _lock = threading.Lock()
 DEFAULT_SETTINGS: dict[str, Any] = {
     "screenscraper_username": "",
     "screenscraper_password": "",
-    "source_type": "local",          # "local" | "smb"
-    "local_path": "/share/anbernic",
     "smb_host": "",
     "smb_share": "",
     "smb_username": "",

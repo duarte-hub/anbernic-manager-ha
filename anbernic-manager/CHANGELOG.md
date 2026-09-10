@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.6
+
+- Fix "Scrape selected"/"Scrape all missing" appearing to do nothing:
+  a failed job-start request (e.g. no systems selected, or a job
+  already running) was thrown but never caught, so it silently failed
+  instead of showing an error. Errors now show in the Systems tab.
+- Removed "local path" ROM source mode entirely -- SMB is now the
+  only source type, everywhere (HA app, docker-compose, settings UI).
+  Dropped `source_type`/`local_path` from settings and the `share`/
+  `media` folder mappings from `config.yaml`; docker-compose no longer
+  needs a host bind-mount or `.env`.
+- Job panel is now a small status window: a status badge (running /
+  completed / failed / cancelled) plus a "Log detail" selector
+  (Quiet / Normal / Verbose) that filters how much of the raw
+  Skyscraper output is shown, without losing any of it -- switching
+  the level re-renders from the full buffered log.
+
 ## 0.1.5
 
 - The startup diagnostic showed `full_access: true` was not actually

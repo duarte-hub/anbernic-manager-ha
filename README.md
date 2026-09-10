@@ -17,8 +17,8 @@ but not built yet.
 
 ## What it does
 
-- Points at your ROM library either over **SMB** (it mounts the share
-  itself) or a **local path** you bind into the container.
+- Points at your ROM library over **SMB** -- it mounts the share itself
+  (`mount -t cifs`), no host-side bind mount needed.
 - Scans `roms/<system>/` folders, guesses each one's Skyscraper platform
   code, and shows ROM count vs. already-scraped count per system -- you
   confirm/override the platform mapping before running anything.
@@ -42,23 +42,20 @@ available on Container/Core installs -- use docker-compose instead).
 1. Settings → Add-ons → Add-on Store → ⋮ (top right) → Repositories.
 2. Add this repository's URL.
 3. Find **Anbernic Manager** in the store, install it, start it.
-4. Open it from the HA sidebar (Ingress panel).
-5. In its **Settings** tab, enter your ScreenScraper username/password and
-   point it at your ROM source (see below).
+4. **Turn off "Protection mode"** for this app (Info tab) -- required for
+   the next step to actually take effect; Supervisor silently ignores
+   `privileged`/`apparmor` settings on a protected app.
+5. Open it from the HA sidebar (Ingress panel).
+6. In its **Settings** tab, enter your ScreenScraper username/password and
+   your SMB host/share/credentials.
 
-By default the app ships with `full_access: true` in `config.yaml` so it
-can mount an SMB share itself (`mount -t cifs`, which needs the
-`SYS_ADMIN` capability plus an AppArmor exception -- `full_access` is the
-standard, documented way to get both from a Supervisor app). If you'd
-rather not grant that:
-
-- Remove `full_access: true` from `anbernic-manager/config.yaml`.
-- Use **local path** mode instead of SMB: copy or already-mount your ROMs
-  under Home Assistant's own `share` or `media` area (Settings → System →
-  Storage, for a USB-attached SD card reader on the HA host), then set
-  the source path in the app to the matching `/share/...` or
-  `/media/...` path -- Supervisor apps can only reach paths under those
-  specific mapped folders, not arbitrary host paths.
+The app ships with `privileged: [SYS_ADMIN, DAC_READ_SEARCH]` and
+`apparmor: false` in `config.yaml` so it can mount an SMB share itself
+(`mount -t cifs` needs `SYS_ADMIN` for the mount syscall itself, and
+`DAC_READ_SEARCH` plus the AppArmor exception for it to drop privileges
+afterwards -- without the AppArmor exception it fails with `mount failed
+(exit 2): Unable to apply new capability set.`). All three require
+Protection mode to be off, as above.
 
 ## Installing standalone (docker-compose)
 
@@ -67,21 +64,13 @@ Works next to any Home Assistant install, or with none at all.
 ```bash
 git clone <this repo> anbernic-manager-ha
 cd anbernic-manager-ha
-cp .env.example .env   # only needed for local-path mode, see below
 docker compose up -d --build
 ```
 
-Open `http://<docker-host>:8099`.
-
-- **Local path mode**: set `ROMS_HOST_PATH` in `.env` to wherever your
-  ROMs already live on the Docker host (a mounted SD card, an existing
-  SMB/NFS mount, a plain folder) -- docker-compose can bind-mount any
-  host path, unlike a Supervisor app. It's bound to `/share/anbernic`
-  inside the container by default; set that same path as "local_path" in
-  the app's Settings tab.
-- **SMB mode**: works out of the box (`docker-compose.yml` already grants
-  `SYS_ADMIN` + the AppArmor exception needed for the container to mount
-  CIFS itself) -- just fill in host/share/username/password in Settings.
+Open `http://<docker-host>:8099` and fill in your ScreenScraper and SMB
+details in the Settings tab -- `docker-compose.yml` already grants
+`SYS_ADMIN` + the AppArmor exception the container needs to mount CIFS
+itself, so this works out of the box.
 
 ## Notes
 

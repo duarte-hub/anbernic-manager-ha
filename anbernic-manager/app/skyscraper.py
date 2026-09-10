@@ -68,21 +68,15 @@ def write_config() -> None:
 
 
 async def ensure_source_ready() -> Path:
-    """Mount SMB if configured, or validate the local path. Returns the
-    resolved source root (the directory that directly contains roms_subdir)."""
+    """Mount the configured SMB share. Returns the resolved source root
+    (the directory that directly contains roms_subdir)."""
     s = storage.get_settings()
-    if s["source_type"] == "smb":
-        result = await smb.mount_smb(
-            s["smb_host"], s["smb_share"], s["smb_username"], s["smb_password"], s["smb_domain"]
-        )
-        if not result.ok:
-            raise SourceError(result.message)
-        return Path(smb.MOUNT_POINT)
-    else:
-        root = Path(s["local_path"])
-        if not root.is_dir():
-            raise SourceError(f"Local path '{root}' does not exist or isn't mounted into the container.")
-        return root
+    result = await smb.mount_smb(
+        s["smb_host"], s["smb_share"], s["smb_username"], s["smb_password"], s["smb_domain"]
+    )
+    if not result.ok:
+        raise SourceError(result.message)
+    return Path(smb.MOUNT_POINT)
 
 
 def roms_root(source_root: Path) -> Path:
@@ -117,9 +111,7 @@ def _count_gamelist_entries(system_dir: Path) -> int:
 def scan_systems() -> list[dict]:
     """Synchronous scan -- call only after ensure_source_ready() has run
     for the current request/job."""
-    s = storage.get_settings()
-    source_root = Path(smb.MOUNT_POINT) if s["source_type"] == "smb" else Path(s["local_path"])
-    root = roms_root(source_root)
+    root = roms_root(Path(smb.MOUNT_POINT))
     overrides = storage.get_overrides()
     out = []
     if not root.is_dir():

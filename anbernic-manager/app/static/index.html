@@ -43,7 +43,17 @@
     </table>
 
     <div id="job-panel" class="hidden">
-      <h3 id="job-title">Job</h3>
+      <div class="job-panel-header">
+        <h3 id="job-title">Job</h3>
+        <span id="job-status-badge" class="status-badge"></span>
+        <label class="verbosity-label">Log detail
+          <select id="log-verbosity">
+            <option value="quiet">Quiet -- system start/done only</option>
+            <option value="normal" selected>Normal -- + progress &amp; results</option>
+            <option value="verbose">Verbose -- every Skyscraper line</option>
+          </select>
+        </label>
+      </div>
       <div id="job-progress"></div>
       <pre id="job-log"></pre>
       <button id="cancel-job-btn">Cancel</button>
@@ -61,25 +71,14 @@
       </fieldset>
 
       <fieldset>
-        <legend>ROM source</legend>
-        <label>Type
-          <select name="source_type" id="source-type">
-            <option value="local">Local / bind-mounted path</option>
-            <option value="smb">SMB share</option>
-          </select>
-        </label>
-        <div id="local-fields">
-          <label>Path inside the container <input type="text" name="local_path" placeholder="/share/anbernic"></label>
-        </div>
-        <div id="smb-fields">
-          <label>Host <input type="text" name="smb_host" placeholder="knulli.local or 192.168.1.50"></label>
-          <label>Share name <input type="text" name="smb_share" placeholder="share"></label>
-          <label>Username <input type="text" name="smb_username" autocomplete="off"></label>
-          <label>Password <input type="password" name="smb_password" autocomplete="new-password" placeholder="(unchanged)"></label>
-          <label>Domain (optional) <input type="text" name="smb_domain"></label>
-          <button type="button" id="test-smb-btn">Test connection</button>
-          <span id="test-smb-result"></span>
-        </div>
+        <legend>ROM source (SMB share)</legend>
+        <label>Host <input type="text" name="smb_host" placeholder="knulli.local or 192.168.1.50"></label>
+        <label>Share name <input type="text" name="smb_share" placeholder="share"></label>
+        <label>Username <input type="text" name="smb_username" autocomplete="off"></label>
+        <label>Password <input type="password" name="smb_password" autocomplete="new-password" placeholder="(unchanged)"></label>
+        <label>Domain (optional) <input type="text" name="smb_domain"></label>
+        <button type="button" id="test-smb-btn">Test connection</button>
+        <span id="test-smb-result"></span>
         <label>roms/ subfolder <input type="text" name="roms_subdir" placeholder="roms"></label>
       </fieldset>
 

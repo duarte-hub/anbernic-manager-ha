@@ -1,11 +1,10 @@
 # Standalone deployment (no Home Assistant Supervisor required).
 #
-#   cp .env.example .env      # fill in the two source-mount lines
 #   docker compose up -d --build
 #   open http://<this-host>:8099
 #
-# ScreenScraper credentials and everything else are entered in the app's
-# own Settings tab after it's up -- nothing else to configure here.
+# ScreenScraper credentials and your SMB share details are entered in
+# the app's own Settings tab after it's up -- nothing to configure here.
 
 services:
   anbernic-manager:
@@ -16,12 +15,8 @@ services:
       - "8099:8099"
     volumes:
       - anbernic-manager-data:/data
-      # "Local path" mode: bind-mount your ROMs folder (or an already-
-      # mounted SMB/NFS share on the host) read-write into the container,
-      # then set that same right-hand path as "local_path" in Settings.
-      - ${ROMS_HOST_PATH:-./roms}:/share/anbernic
     cap_add:
-      - SYS_ADMIN   # only needed for the built-in SMB-mount feature
+      - SYS_ADMIN   # needed for the built-in SMB-mount feature
     security_opt:
       - apparmor:unconfined
 

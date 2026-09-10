@@ -141,18 +141,29 @@ function selectedSystems() {
   return selected;
 }
 
+function showSystemsError(message) {
+  const errEl = $("#systems-error");
+  errEl.textContent = message;
+  errEl.classList.remove("hidden");
+}
+
 async function startJob(systems) {
   if (systems.length === 0) {
-    alert("No systems with a resolved platform are selected.");
+    showSystemsError("No systems with a resolved platform are selected.");
     return;
   }
+  $("#systems-error").classList.add("hidden");
   const only_missing = $("#only-missing").checked;
   const unpack = $("#unpack").checked;
-  const { job_id } = await api("/api/jobs", {
-    method: "POST",
-    body: JSON.stringify({ systems, only_missing, unpack }),
-  });
-  watchJob(job_id);
+  try {
+    const { job_id } = await api("/api/jobs", {
+      method: "POST",
+      body: JSON.stringify({ systems, only_missing, unpack }),
+    });
+    watchJob(job_id);
+  } catch (e) {
+    showSystemsError(`Couldn't start job: ${e.message}`);
+  }
 }
 
 $("#scrape-selected-btn").addEventListener("click", () => startJob(selectedSystems()));
@@ -163,14 +174,45 @@ $("#scrape-all-btn").addEventListener("click", () => {
   startJob(all);
 });
 
+// ---------- job log verbosity ----------
+// "quiet" lines are job/system boundaries and errors -- always shown.
+// "normal" adds per-game found/not-found and summary lines.
+// "verbose" is every raw Skyscraper line, unfiltered.
+const LOG_LEVELS = { quiet: 0, normal: 1, verbose: 2 };
+function lineLevel(text) {
+  if (/^(===|---|!!!)/.test(text)) return "quiet";
+  if (/found! :\)|not found|Successfully processed|Skipped games|requests remaining/i.test(text)) return "normal";
+  return "verbose";
+}
+
+let jobLogLines = [];
+
+function renderJobLog() {
+  const logEl = $("#job-log");
+  const verbosity = $("#log-verbosity").value;
+  logEl.textContent = jobLogLines
+    .filter((text) => LOG_LEVELS[lineLevel(text)] <= LOG_LEVELS[verbosity])
+    .join("\n");
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+$("#log-verbosity").addEventListener("change", renderJobLog);
+
+function setJobStatus(text, cls) {
+  const badge = $("#job-status-badge");
+  badge.textContent = text;
+  badge.className = "status-badge" + (cls ? ` status-${cls}` : "");
+}
+
 function watchJob(jobId) {
   const panel = $("#job-panel");
-  const logEl = $("#job-log");
   const progressEl = $("#job-progress");
   panel.classList.remove("hidden");
   $("#job-title").textContent = `Job #${jobId}`;
-  logEl.textContent = "";
+  jobLogLines = [];
+  renderJobLog();
   progressEl.textContent = "starting...";
+  setJobStatus("running", "running");
 
   // Resolve relative to the current document (not just location.host) so
   // this still lands on the right path behind Home Assistant Ingress.
@@ -179,11 +221,13 @@ function watchJob(jobId) {
   const ws = new WebSocket(wsUrl.href);
   const perSystem = {};
 
+  ws.onerror = () => showSystemsError("Lost the job log connection -- the job may still be running; check History.");
+
   ws.onmessage = (ev) => {
     const event = JSON.parse(ev.data);
     if (event.type === "line") {
-      logEl.textContent += event.text + "\n";
-      logEl.scrollTop = logEl.scrollHeight;
+      jobLogLines.push(event.text);
+      renderJobLog();
     } else if (event.type === "progress") {
       perSystem[event.folder] = `${event.folder}: ${event.current}/${event.total}`;
       progressEl.textContent = Object.values(perSystem).join("  |  ");
@@ -193,6 +237,7 @@ function watchJob(jobId) {
       progressEl.textContent = Object.values(perSystem).join("  |  ");
     } else if (event.type === "done") {
       progressEl.textContent += `  --  ${event.status}`;
+      setJobStatus(event.status, event.status === "completed" ? "done" : event.status);
       loadSystems();
     }
   };
@@ -203,13 +248,6 @@ function watchJob(jobId) {
 }
 
 // ---------- settings ----------
-const sourceTypeSel = $("#source-type");
-function updateSourceFields() {
-  $("#local-fields").classList.toggle("hidden", sourceTypeSel.value !== "local");
-  $("#smb-fields").classList.toggle("hidden", sourceTypeSel.value !== "smb");
-}
-sourceTypeSel.addEventListener("change", updateSourceFields);
-
 async function loadSettings() {
   const s = await api("/api/settings");
   const form = $("#settings-form");
@@ -220,7 +258,6 @@ async function loadSettings() {
     else if (key.endsWith("password")) field.placeholder = s[`${key}_is_set`] ? "(saved -- leave blank to keep)" : "";
     else field.value = value;
   }
-  updateSourceFields();
 }
 
 function collectSettingsPatch() {
