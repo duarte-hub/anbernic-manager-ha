@@ -2,7 +2,7 @@ name: "Anbernic Manager"
 version: "0.1.0"
 slug: "anbernic-manager"
 description: "Scrape metadata & artwork for your Anbernic/Knulli ROM library via ScreenScraper, from a web UI."
-url: "https://github.com/YOUR_GITHUB_USER/anbernic-manager-ha"
+url: "https://github.com/duarte-hub/anbernic-manager-ha"
 arch:
   - aarch64
   - amd64
