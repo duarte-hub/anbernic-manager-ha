@@ -193,7 +193,13 @@ async def run_scrape_pass(system_dir: Path, platform: str, only_missing: bool, u
         "-s", "screenscraper", "--flags", flags,
     ]
     if rom_filename:
-        cmd.append(rom_filename)
+        # Belt-and-suspenders against argv flag smuggling: reject anything
+        # that isn't plainly a filename, and use "--" so Skyscraper's own
+        # arg parser can't mistake a validated-but-still-dash-led value
+        # for a flag either.
+        if rom_filename.startswith("-") or "/" in rom_filename or rom_filename in (".", ".."):
+            raise ValueError(f"invalid rom_filename: {rom_filename!r}")
+        cmd += ["--", rom_filename]
     return await _stream_command(cmd, _env(), on_line)
 
 

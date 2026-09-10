@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1
+
+- Security fix: `rom_filename` (from the new per-game rescrape, 0.3.0)
+  was appended to the Skyscraper subprocess argv without validation --
+  a value starting with `-` could be parsed as a Skyscraper flag
+  instead of a filename. Rejected at the API boundary (`JobSystemIn`)
+  and again before building the command in `skyscraper.run_scrape_pass`
+  (which also now inserts a `--` sentinel), plus the same check added
+  to `delete_system_game`'s filename validation.
+
 ## 0.3.0
 
 - New **Library** tab: a per-system ROM browser. Pick a system, browse

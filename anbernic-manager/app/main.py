@@ -20,7 +20,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 import deviceconfig
 import jobs
@@ -284,7 +284,7 @@ async def get_game_media(folder: str, path: str) -> FileResponse:
 async def delete_system_game(folder: str, filename: str) -> dict[str, Any]:
     """Deletes one ROM (plus its scraped media and gamelist entry, if
     any) -- permanent, unlike disabling a device-config key."""
-    if not filename or "/" in filename or filename in (".", ".."):
+    if not filename or "/" in filename or filename in (".", "..") or filename.startswith("-"):
         raise HTTPException(400, "Invalid filename.")
     system_dir = await _system_dir(folder)
     if not (system_dir / filename).is_file():
@@ -345,6 +345,17 @@ class JobSystemIn(BaseModel):
     folder: str
     platform: str
     rom_filename: str | None = None
+
+    @field_validator("rom_filename")
+    @classmethod
+    def _validate_rom_filename(cls, v: str | None) -> str | None:
+        # rom_filename is appended to a Skyscraper subprocess argv (see
+        # skyscraper.run_scrape_pass) -- reject anything that could be
+        # mistaken for a flag or escape the system folder, at the API
+        # boundary rather than relying only on the subprocess-layer check.
+        if v is not None and (v.startswith("-") or "/" in v or v in (".", "..")):
+            raise ValueError(f"invalid rom_filename: {v!r}")
+        return v
 
 
 class JobIn(BaseModel):
