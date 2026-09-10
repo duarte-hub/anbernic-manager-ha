@@ -223,9 +223,8 @@ async function loadSettings() {
   updateSourceFields();
 }
 
-$("#settings-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const form = e.target;
+function collectSettingsPatch() {
+  const form = $("#settings-form");
   const patch = {};
   for (const el of form.elements) {
     if (!el.name) continue;
@@ -233,7 +232,16 @@ $("#settings-form").addEventListener("submit", async (e) => {
     else if (el.type === "password" && el.value === "") continue; // keep stored secret
     else patch[el.name] = el.value;
   }
-  await api("/api/settings", { method: "POST", body: JSON.stringify(patch) });
+  return patch;
+}
+
+async function saveSettings() {
+  await api("/api/settings", { method: "POST", body: JSON.stringify(collectSettingsPatch()) });
+}
+
+$("#settings-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await saveSettings();
   $("#settings-saved").textContent = "Saved.";
   setTimeout(() => ($("#settings-saved").textContent = ""), 2000);
 });
@@ -242,6 +250,7 @@ $("#test-ss-btn").addEventListener("click", async () => {
   const el = $("#test-ss-result");
   el.textContent = "testing...";
   try {
+    await saveSettings(); // so the test uses what's currently on screen, not stale saved values
     const r = await api("/api/settings/test-screenscraper", { method: "POST" });
     el.textContent = r.ok ? `OK (threads: ${r.threads ?? "?"})` : "Login failed -- check credentials.";
   } catch (e) {
@@ -253,6 +262,7 @@ $("#test-smb-btn").addEventListener("click", async () => {
   const el = $("#test-smb-result");
   el.textContent = "testing...";
   try {
+    await saveSettings(); // so the test uses what's currently on screen, not stale saved values
     const r = await api("/api/settings/test-smb", { method: "POST" });
     el.textContent = r.message;
   } catch (e) {

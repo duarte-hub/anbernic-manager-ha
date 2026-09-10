@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.5
+
+- The startup diagnostic showed `full_access: true` was not actually
+  granting `SYS_ADMIN`/`DAC_READ_SEARCH` under the current Supervisor.
+  Switched to explicitly requesting `privileged: [SYS_ADMIN,
+  DAC_READ_SEARCH]`, which is what `mount.cifs` actually needs.
+  **This (and `apparmor: false`) only take effect once this app's
+  "Protection mode" toggle is switched off in its Info tab** -- with
+  Protection mode on, both settings are silently ignored.
+- Fix "Test connection"/"Test login" testing stale saved settings
+  instead of whatever is currently typed in the form (they now save
+  the form first, then run the test).
+
 ## 0.1.4
 
 - The SMB mount capability error persists even with `full_access`,

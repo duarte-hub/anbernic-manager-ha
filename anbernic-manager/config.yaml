@@ -1,5 +1,5 @@
 name: "Anbernic Manager"
-version: "0.1.4"
+version: "0.1.5"
 slug: "anbernic-manager"
 description: "Scrape metadata & artwork for your Anbernic/Knulli ROM library via ScreenScraper, from a web UI."
 url: "https://github.com/duarte-hub/anbernic-manager-ha"
@@ -17,15 +17,22 @@ panel_title: "Anbernic Manager"
 # Needed so the app can mount your Knulli SMB share itself with `mount -t
 # cifs` (see README). If you only ever use "local path" mode -- i.e. you
 # bind the ROMs folder in yourself under /share or /media -- you can
-# remove `full_access` and `apparmor` and add the granular map entries
+# remove `privileged` and `apparmor` and add the granular map entries
 # below instead.
 #
-# `apparmor: false` is required in addition to `full_access` -- Supervisor
-# still applies its default AppArmor profile on top of full_access, and
-# that profile blocks the `capset` syscall mount.cifs needs internally,
-# which surfaces as "mount failed (exit 2): Unable to apply new
-# capability set."
-full_access: true
+# SYS_ADMIN is what the mount() syscall itself requires; DAC_READ_SEARCH
+# and apparmor: false are what mount.cifs needs internally to drop
+# capabilities after mounting (without them it fails with "mount failed
+# (exit 2): Unable to apply new capability set."). `full_access: true`
+# does NOT reliably grant these under the current Supervisor -- use the
+# explicit list instead.
+#
+# IMPORTANT: both `privileged` and `apparmor` only take effect once this
+# app's "Protection mode" toggle (Info tab in Home Assistant) is turned
+# off -- with it on, these settings are silently ignored.
+privileged:
+  - SYS_ADMIN
+  - DAC_READ_SEARCH
 apparmor: false
 
 map:
