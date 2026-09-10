@@ -1,0 +1,9 @@
+configuration:
+  screenscraper_username:
+    name: ScreenScraper username
+    description: Optional -- you can also set this from the app's own Settings tab.
+  screenscraper_password:
+    name: ScreenScraper password
+    description: Optional -- you can also set this from the app's own Settings tab.
+network:
+  "8099/tcp": Web UI (usually reached via Ingress instead)

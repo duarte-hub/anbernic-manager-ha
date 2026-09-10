@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anbernic Manager</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <h1>🕹️ Anbernic Manager</h1>
+  <nav>
+    <button class="tab-btn active" data-tab="systems">Systems</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+    <button class="tab-btn" data-tab="history">History</button>
+  </nav>
+</header>
+
+<main>
+
+  <section id="tab-systems" class="tab active">
+    <div class="toolbar">
+      <button id="scan-btn">Rescan source</button>
+      <label><input type="checkbox" id="only-missing" checked> Only fetch missing</label>
+      <label><input type="checkbox" id="unpack" checked> Unpack archives for matching</label>
+      <button id="scrape-selected-btn" class="primary">Scrape selected</button>
+      <button id="scrape-all-btn">Scrape all missing</button>
+    </div>
+    <div id="systems-error" class="banner error hidden"></div>
+    <table id="systems-table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" id="select-all"></th>
+          <th>Folder</th>
+          <th>Platform</th>
+          <th>ROMs</th>
+          <th>Scraped</th>
+          <th>Coverage</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="systems-body"></tbody>
+    </table>
+
+    <div id="job-panel" class="hidden">
+      <h3 id="job-title">Job</h3>
+      <div id="job-progress"></div>
+      <pre id="job-log"></pre>
+      <button id="cancel-job-btn">Cancel</button>
+    </div>
+  </section>
+
+  <section id="tab-settings" class="tab">
+    <form id="settings-form">
+      <fieldset>
+        <legend>ScreenScraper account</legend>
+        <label>Username <input type="text" name="screenscraper_username" autocomplete="off"></label>
+        <label>Password <input type="password" name="screenscraper_password" autocomplete="new-password" placeholder="(unchanged)"></label>
+        <button type="button" id="test-ss-btn">Test login</button>
+        <span id="test-ss-result"></span>
+      </fieldset>
+
+      <fieldset>
+        <legend>ROM source</legend>
+        <label>Type
+          <select name="source_type" id="source-type">
+            <option value="local">Local / bind-mounted path</option>
+            <option value="smb">SMB share</option>
+          </select>
+        </label>
+        <div id="local-fields">
+          <label>Path inside the container <input type="text" name="local_path" placeholder="/share/anbernic"></label>
+        </div>
+        <div id="smb-fields">
+          <label>Host <input type="text" name="smb_host" placeholder="knulli.local or 192.168.1.50"></label>
+          <label>Share name <input type="text" name="smb_share" placeholder="share"></label>
+          <label>Username <input type="text" name="smb_username" autocomplete="off"></label>
+          <label>Password <input type="password" name="smb_password" autocomplete="new-password" placeholder="(unchanged)"></label>
+          <label>Domain (optional) <input type="text" name="smb_domain"></label>
+          <button type="button" id="test-smb-btn">Test connection</button>
+          <span id="test-smb-result"></span>
+        </div>
+        <label>roms/ subfolder <input type="text" name="roms_subdir" placeholder="roms"></label>
+      </fieldset>
+
+      <fieldset>
+        <legend>Scraping</legend>
+        <label>Region priority <input type="text" name="region_priority"></label>
+      </fieldset>
+
+      <button type="submit" class="primary">Save settings</button>
+      <span id="settings-saved"></span>
+    </form>
+  </section>
+
+  <section id="tab-history" class="tab">
+    <table id="history-table">
+      <thead><tr><th>Job</th><th>Started</th><th>Status</th><th>Systems</th></tr></thead>
+      <tbody id="history-body"></tbody>
+    </table>
+  </section>
+
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

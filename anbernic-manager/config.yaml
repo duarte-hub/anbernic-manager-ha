@@ -1,0 +1,36 @@
+name: "Anbernic Manager"
+version: "0.1.0"
+slug: "anbernic-manager"
+description: "Scrape metadata & artwork for your Anbernic/Knulli ROM library via ScreenScraper, from a web UI."
+url: "https://github.com/YOUR_GITHUB_USER/anbernic-manager-ha"
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+ingress: true
+ingress_port: 8099
+ingress_entry: "/"
+panel_icon: mdi:gamepad-variant-outline
+panel_title: "Anbernic Manager"
+
+# Needed so the app can mount your Knulli SMB share itself with `mount -t
+# cifs` (see README). If you only ever use "local path" mode -- i.e. you
+# bind the ROMs folder in yourself under /share or /media -- you can
+# remove `full_access` and add the granular map entries below instead.
+full_access: true
+
+map:
+  - type: share
+    read_only: false
+  - type: media
+    read_only: false
+  - type: data
+    read_only: false
+
+options:
+  screenscraper_username: ""
+  screenscraper_password: ""
+schema:
+  screenscraper_username: "str?"
+  screenscraper_password: "password?"
