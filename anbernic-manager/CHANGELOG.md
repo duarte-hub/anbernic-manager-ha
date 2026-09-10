@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+- Fix UI showing `{"detail":"Not Found"}` when opened through Home
+  Assistant Ingress: static assets, API calls, and the jobs WebSocket
+  now use paths relative to the current page instead of absolute
+  paths, so they resolve correctly behind Ingress's per-session token
+  sub-path.
+- Fix add-on/repository metadata pointing at a placeholder GitHub URL.
+
 ## 0.1.0
 
 Initial release.
