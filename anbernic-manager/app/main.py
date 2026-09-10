@@ -198,7 +198,18 @@ class OverrideIn(BaseModel):
     enabled: bool = True
 
 
+def _validate_path_segment(name: str, what: str = "name") -> None:
+    """folder/filename path params get concatenated onto a real
+    filesystem path (system_dir / name, and further deletes/writes from
+    there) -- reject anything that isn't plainly one path segment, since
+    "{folder}" alone (e.g. folder="..") is enough to escape roms_subdir
+    to the share root without ever containing a literal "/"."""
+    if not name or "/" in name or "\\" in name or name in (".", "..") or name.startswith("-"):
+        raise HTTPException(400, f"Invalid {what}.")
+
+
 async def _system_dir(folder: str) -> Path:
+    _validate_path_segment(folder, "folder name")
     try:
         source_root = await skyscraper.ensure_source_ready()
     except skyscraper.SourceError as e:
@@ -231,6 +242,7 @@ async def rewrite_gamelist(folder: str) -> dict[str, Any]:
     causes ES to save its own (metadata-less) gamelist.xml over ours the
     first time. Re-running just the gamelist-write pass from the local
     Skyscraper cache fixes it in a couple of seconds, no network calls."""
+    _validate_path_segment(folder, "folder name")
     try:
         source_root = await skyscraper.ensure_source_ready()
     except skyscraper.SourceError as e:
@@ -253,8 +265,6 @@ async def delete_system_folder(folder: str) -> dict[str, Any]:
     one (0 ROMs, recomputed here rather than trusting the client's
     cached count), since this removes it and anything already scraped
     into it permanently."""
-    if not folder or "/" in folder or folder in (".", ".."):
-        raise HTTPException(400, "Invalid folder name.")
     system_dir = await _system_dir(folder)
     rom_count = skyscraper.count_roms(system_dir)
     if rom_count != 0:
@@ -284,8 +294,7 @@ async def get_game_media(folder: str, path: str) -> FileResponse:
 async def delete_system_game(folder: str, filename: str) -> dict[str, Any]:
     """Deletes one ROM (plus its scraped media and gamelist entry, if
     any) -- permanent, unlike disabling a device-config key."""
-    if not filename or "/" in filename or filename in (".", "..") or filename.startswith("-"):
-        raise HTTPException(400, "Invalid filename.")
+    _validate_path_segment(filename, "filename")
     system_dir = await _system_dir(folder)
     if not (system_dir / filename).is_file():
         raise HTTPException(404, f"'{filename}' not found in '{folder}'.")
@@ -306,7 +315,15 @@ async def _read_device_config() -> tuple[Path, list[dict[str, Any]]]:
         source_root = await skyscraper.ensure_source_ready()
     except skyscraper.SourceError as e:
         raise HTTPException(400, str(e))
-    path = source_root / storage.get_settings()["device_config_path"]
+    # device_config_path is free-text (Settings tab), so a stray "../.."
+    # in it could otherwise point this read/write anywhere on the
+    # container's filesystem -- confine it to the mounted share.
+    root = source_root.resolve()
+    path = (source_root / storage.get_settings()["device_config_path"]).resolve()
+    try:
+        path.relative_to(root)
+    except ValueError:
+        raise HTTPException(400, "Device config file path escapes the share root -- check the setting.")
     if not path.is_file():
         raise HTTPException(404, f"{path} not found on the share.")
     return path, deviceconfig.parse(path.read_text(errors="replace"))

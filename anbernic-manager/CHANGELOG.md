@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.3.2
+
+- Security fix: path traversal via the `{folder}`/`{filename}` URL
+  segments added for the Library tab (0.3.0). `_system_dir()` and
+  `rewrite-gamelist` built filesystem paths from these without
+  checking for `..`, so a request like `folder=".."` could resolve
+  outside `roms_subdir` (e.g. to the share root) -- a single path
+  segment doesn't need a literal `/` to do this. Added a shared
+  `_validate_path_segment()` check used everywhere a folder/filename
+  path param reaches the filesystem.
+- Also confined `device_config_path` (a free-text Settings field) to
+  the mounted share root before reading/writing it -- previously a
+  stray `../..` in that setting could point the Device tab's
+  read/write at any file on the container's filesystem.
+- Known follow-up, not yet fixed: `roms_subdir` (another free-text
+  setting) has the same class of issue in `skyscraper.roms_root()`.
+  Lower severity since it requires the app's own admin to set a bad
+  value rather than being reachable via a request, but still worth
+  confining the same way.
+
 ## 0.3.1
 
 - Security fix: `rom_filename` (from the new per-game rescrape, 0.3.0)
