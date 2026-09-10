@@ -2,7 +2,9 @@ const $ = (sel, el = document) => el.querySelector(sel);
 const $$ = (sel, el = document) => Array.from(el.querySelectorAll(sel));
 
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
+  // Relative to the current document so this keeps working when served
+  // behind Home Assistant Ingress's dynamic per-session sub-path.
+  const res = await fetch(path.replace(/^\//, ""), {
     headers: { "Content-Type": "application/json" },
     ...opts,
   });
@@ -170,8 +172,11 @@ function watchJob(jobId) {
   logEl.textContent = "";
   progressEl.textContent = "starting...";
 
-  const proto = location.protocol === "https:" ? "wss" : "ws";
-  const ws = new WebSocket(`${proto}://${location.host}/ws/jobs/${jobId}`);
+  // Resolve relative to the current document (not just location.host) so
+  // this still lands on the right path behind Home Assistant Ingress.
+  const wsUrl = new URL(`ws/jobs/${jobId}`, location.href);
+  wsUrl.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const ws = new WebSocket(wsUrl.href);
   const perSystem = {};
 
   ws.onmessage = (ev) => {
