@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.2
+
+- Fix `{"detail":"Not Found"}` on the root page specifically when
+  opened via Home Assistant's Ingress: Supervisor requests the root
+  page as `//` (double slash), which doesn't match FastAPI's `/`
+  route. Middleware now collapses duplicate leading slashes before
+  routing.
+
 ## 0.1.1
 
 - Fix UI showing `{"detail":"Not Found"}` when opened through Home

@@ -12,10 +12,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -33,6 +34,18 @@ app = FastAPI(title="Anbernic Manager")
 
 STATIC_DIR = Path(__file__).parent / "static"
 HA_OPTIONS_PATH = Path("/data/options.json")
+
+
+@app.middleware("http")
+async def collapse_duplicate_slashes(request: Request, call_next):
+    """Home Assistant Ingress requests the root page as `//` (it appends
+    a path separator to an already-absolute sub-path), which Starlette
+    treats as distinct from `/` and 404s. Normalize before routing."""
+    path = request.scope["path"]
+    collapsed = re.sub(r"/{2,}", "/", path)
+    if collapsed != path:
+        request.scope["path"] = collapsed
+    return await call_next(request)
 
 
 def _load_ha_options() -> None:
