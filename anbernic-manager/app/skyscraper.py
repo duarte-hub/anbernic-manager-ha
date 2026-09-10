@@ -176,10 +176,14 @@ async def run_gamelist_pass(system_dir: Path, platform: str, on_line: Callable[[
 
 
 async def run_scrape_pass(system_dir: Path, platform: str, only_missing: bool, unpack: bool,
-                           on_line: Callable[[str], None]) -> str:
+                           on_line: Callable[[str], None], rom_filename: str | None = None) -> str:
+    """If rom_filename is given, scopes the scrape to just that one ROM
+    (per Skyscraper's own docs: appending a filename positionally scopes
+    the run to it) and always forces a refresh -- only_missing wouldn't
+    make sense for a game you're deliberately re-scraping."""
     write_config()
     flags = "unattend,relative"
-    if only_missing:
+    if only_missing and not rom_filename:
         flags = "onlymissing," + flags
     if unpack:
         flags += ",unpack"
@@ -188,6 +192,8 @@ async def run_scrape_pass(system_dir: Path, platform: str, only_missing: bool, u
         "-i", str(system_dir), "-a", str(ARTWORK_PATH),
         "-s", "screenscraper", "--flags", flags,
     ]
+    if rom_filename:
+        cmd.append(rom_filename)
     return await _stream_command(cmd, _env(), on_line)
 
 

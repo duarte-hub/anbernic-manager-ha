@@ -24,6 +24,7 @@ from pydantic import BaseModel
 
 import deviceconfig
 import jobs
+import library
 import platforms as platforms_mod
 import skyscraper
 import smb
@@ -197,6 +198,17 @@ class OverrideIn(BaseModel):
     enabled: bool = True
 
 
+async def _system_dir(folder: str) -> Path:
+    try:
+        source_root = await skyscraper.ensure_source_ready()
+    except skyscraper.SourceError as e:
+        raise HTTPException(400, str(e))
+    system_dir = skyscraper.roms_root(source_root) / folder
+    if not system_dir.is_dir():
+        raise HTTPException(404, f"{system_dir} not found.")
+    return system_dir
+
+
 @app.get("/api/systems")
 async def get_systems() -> dict[str, Any]:
     try:
@@ -243,17 +255,41 @@ async def delete_system_folder(folder: str) -> dict[str, Any]:
     into it permanently."""
     if not folder or "/" in folder or folder in (".", ".."):
         raise HTTPException(400, "Invalid folder name.")
-    try:
-        source_root = await skyscraper.ensure_source_ready()
-    except skyscraper.SourceError as e:
-        raise HTTPException(400, str(e))
-    system_dir = skyscraper.roms_root(source_root) / folder
-    if not system_dir.is_dir():
-        raise HTTPException(404, f"{system_dir} not found.")
+    system_dir = await _system_dir(folder)
     rom_count = skyscraper.count_roms(system_dir)
     if rom_count != 0:
         raise HTTPException(400, f"'{folder}' has {rom_count} ROM(s) -- refusing to delete a non-empty folder.")
     shutil.rmtree(system_dir)
+    return {"ok": True}
+
+
+# ---------- library (per-game ROM browser) ----------
+
+@app.get("/api/systems/{folder}/games")
+async def get_games(folder: str) -> dict[str, Any]:
+    system_dir = await _system_dir(folder)
+    return {"games": library.list_games(system_dir)}
+
+
+@app.get("/api/systems/{folder}/media")
+async def get_game_media(folder: str, path: str) -> FileResponse:
+    system_dir = await _system_dir(folder)
+    media_path = library.resolve_media_path(system_dir, path)
+    if media_path is None:
+        raise HTTPException(404, "Media file not found.")
+    return FileResponse(str(media_path))
+
+
+@app.delete("/api/systems/{folder}/games/{filename}")
+async def delete_system_game(folder: str, filename: str) -> dict[str, Any]:
+    """Deletes one ROM (plus its scraped media and gamelist entry, if
+    any) -- permanent, unlike disabling a device-config key."""
+    if not filename or "/" in filename or filename in (".", ".."):
+        raise HTTPException(400, "Invalid filename.")
+    system_dir = await _system_dir(folder)
+    if not (system_dir / filename).is_file():
+        raise HTTPException(404, f"'{filename}' not found in '{folder}'.")
+    library.delete_game(system_dir, filename)
     return {"ok": True}
 
 
@@ -308,6 +344,7 @@ async def disable_device_config(key: str) -> dict[str, Any]:
 class JobSystemIn(BaseModel):
     folder: str
     platform: str
+    rom_filename: str | None = None
 
 
 class JobIn(BaseModel):

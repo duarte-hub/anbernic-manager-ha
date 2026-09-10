@@ -11,6 +11,7 @@
   <h1>🕹️ Anbernic Manager</h1>
   <nav>
     <button class="tab-btn active" data-tab="systems">Systems</button>
+    <button class="tab-btn" data-tab="library">Library</button>
     <button class="tab-btn" data-tab="device">Device</button>
     <button class="tab-btn" data-tab="settings">Settings</button>
     <button class="tab-btn" data-tab="history">History</button>
@@ -59,6 +60,16 @@
       <pre id="job-log"></pre>
       <button id="cancel-job-btn">Cancel</button>
     </div>
+  </section>
+
+  <section id="tab-library" class="tab">
+    <div class="toolbar">
+      <select id="library-system"></select>
+      <button id="library-reload-btn">Reload</button>
+      <input type="text" id="library-filter" placeholder="Search games...">
+    </div>
+    <div id="library-error" class="banner error hidden"></div>
+    <div id="library-grid" class="library-grid"></div>
   </section>
 
   <section id="tab-device" class="tab">

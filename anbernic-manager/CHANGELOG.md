@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.0
+
+- New **Library** tab: a per-system ROM browser. Pick a system, browse
+  its games as cards with box art (from gamelist.xml's `thumbnail`,
+  falling back to `image`), title, filename, and scraped status.
+  - **Delete** a game: removes the ROM file, any media files its
+    gamelist entry pointed at, and that entry itself -- everything
+    else in gamelist.xml is left untouched (new `library.py`).
+  - **Rescrape** a game: re-fetches metadata/art for just that one
+    ROM (Skyscraper supports this by appending the filename
+    positionally), ignoring "only fetch missing". Reuses the existing
+    job/WebSocket/History machinery rather than a separate UI, so
+    starting one switches you to the Systems tab to watch it.
+  - Added `defusedxml` as a dependency for parsing gamelist.xml.
+
 ## 0.2.0
 
 - New **Delete empty folder** action per system with 0 ROMs (Systems

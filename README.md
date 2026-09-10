@@ -11,9 +11,8 @@ current name for what used to be called an "add-on") with a panel in the
 HA sidebar, or standalone next to any Home Assistant install (or with no
 Home Assistant at all) via `docker compose`.
 
-This is a v1 focused on the scraper. A ROM library browser, per-game
-manual re-scrape, and duplicate/verification tools are natural next steps
-but not built yet.
+Duplicate/verification tools across regions are a natural next step but
+not built yet.
 
 ## What it does
 
@@ -46,6 +45,14 @@ but not built yet.
   every key does, so it only ever shows/edits what's actually in your
   file. See [Batocera's config syntax reference](https://wiki.batocera.org/batocera_conf_syntax)
   for key naming conventions if you're adding new ones.
+- **Library tab**: a per-system ROM browser -- pick a system, see every
+  game as a card (box art, title, filename, scraped/not-scraped status).
+  Per game: **Delete** (removes the ROM, its scraped media, and its
+  gamelist entry) or **Rescrape** (re-fetches just that one game via
+  Skyscraper, ignoring "only fetch missing" -- useful when auto-matching
+  picked the wrong game). Rescraping reuses the same job/log/WebSocket
+  machinery as a full system scrape, so it shows up in the Systems tab's
+  job panel and in History like any other job.
 
 ## Installing as a Home Assistant app (Supervisor)
 

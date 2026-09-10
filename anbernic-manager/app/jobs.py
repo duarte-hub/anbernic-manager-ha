@@ -89,11 +89,14 @@ async def _run_job(job_id: int, systems: list[dict], only_missing: bool, unpack:
                 per_system[folder] = {"error": "path missing"}
                 break
 
+            rom_filename = sys.get("rom_filename")
             _broadcast(job_id, {"type": "system_start", "folder": folder})
-            _log_line(job_id, f"--- {folder} ({platform}): scraping ---")
+            _log_line(job_id, f"--- {folder} ({platform}): scraping"
+                              f"{f' {rom_filename}' if rom_filename else ''} ---")
             scrape_log = await skyscraper.run_scrape_pass(
                 system_dir, platform, only_missing, unpack,
                 lambda line, f=folder: (_log_line(job_id, line), _emit_progress(job_id, f, line)),
+                rom_filename=rom_filename,
             )
 
             if not system_dir.is_dir():

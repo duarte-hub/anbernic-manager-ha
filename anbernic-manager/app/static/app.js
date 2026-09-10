@@ -14,14 +14,19 @@ async function api(path, opts = {}) {
 }
 
 // ---------- tabs ----------
+function focusTab(tab) {
+  $$(".tab-btn").forEach((b) => b.classList.remove("active"));
+  $$(".tab").forEach((t) => t.classList.remove("active"));
+  $(`.tab-btn[data-tab="${tab}"]`).classList.add("active");
+  $(`#tab-${tab}`).classList.add("active");
+}
+
 $$(".tab-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
-    $$(".tab-btn").forEach((b) => b.classList.remove("active"));
-    $$(".tab").forEach((t) => t.classList.remove("active"));
-    btn.classList.add("active");
-    $(`#tab-${btn.dataset.tab}`).classList.add("active");
+    focusTab(btn.dataset.tab);
     if (btn.dataset.tab === "history") loadHistory();
     if (btn.dataset.tab === "device" && deviceConfigEntries === null) loadDeviceConfig();
+    if (btn.dataset.tab === "library") loadLibrary();
   });
 });
 
@@ -277,6 +282,7 @@ async function watchJob(jobId) {
       progressEl.textContent += `  --  ${event.status}`;
       setJobStatus(event.status, event.status === "completed" ? "done" : event.status);
       loadSystems();
+      if (libraryGames.length > 0) loadLibrary(); // refresh art/scraped-status if the browser's been opened
     }
   };
 
@@ -344,6 +350,150 @@ $("#test-smb-btn").addEventListener("click", async () => {
     el.textContent = e.message;
   }
 });
+
+// ---------- library (ROM browser) ----------
+let libraryGames = [];
+
+function showLibraryError(message) {
+  const el = $("#library-error");
+  el.textContent = message;
+  el.classList.remove("hidden");
+}
+
+function populateLibrarySystemPicker() {
+  const sel = $("#library-system");
+  const previous = sel.value;
+  sel.innerHTML = "";
+  for (const sys of systemsCache) {
+    const opt = document.createElement("option");
+    opt.value = sys.folder;
+    opt.textContent = `${sys.folder} (${sys.rom_count})`;
+    opt.dataset.platform = sys.platform || "";
+    sel.appendChild(opt);
+  }
+  if (previous && [...sel.options].some((o) => o.value === previous)) sel.value = previous;
+}
+
+async function loadLibrary() {
+  $("#library-error").classList.add("hidden");
+  if (systemsCache.length === 0) await loadSystems();
+  populateLibrarySystemPicker();
+  const folder = $("#library-system").value;
+  if (!folder) {
+    libraryGames = [];
+    renderLibrary();
+    return;
+  }
+  try {
+    const data = await api(`/api/systems/${encodeURIComponent(folder)}/games`);
+    libraryGames = data.games;
+  } catch (e) {
+    libraryGames = [];
+    showLibraryError(e.message);
+  }
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const grid = $("#library-grid");
+  grid.innerHTML = "";
+  const filter = $("#library-filter").value.trim().toLowerCase();
+  const folder = $("#library-system").value;
+  const platform = $("#library-system").selectedOptions[0]?.dataset.platform || "";
+
+  for (const game of libraryGames) {
+    const label = (game.name || game.filename).toLowerCase();
+    if (filter && !label.includes(filter)) continue;
+
+    const card = document.createElement("div");
+    card.className = "game-card";
+
+    const img = document.createElement("img");
+    img.className = "game-thumb";
+    const thumbPath = game.thumbnail || game.image;
+    if (thumbPath) {
+      img.src = `api/systems/${encodeURIComponent(folder)}/media?path=${encodeURIComponent(thumbPath)}`;
+      img.alt = game.name || game.filename;
+    } else {
+      img.classList.add("game-thumb-empty");
+      img.alt = "no art";
+    }
+    card.appendChild(img);
+
+    const info = document.createElement("div");
+    info.className = "game-info";
+    const title = document.createElement("div");
+    title.className = "game-title";
+    title.textContent = game.name || game.filename;
+    info.appendChild(title);
+    const file = document.createElement("div");
+    file.className = "game-file dim";
+    file.textContent = game.filename;
+    info.appendChild(file);
+    if (!game.scraped) {
+      const badge = document.createElement("span");
+      badge.className = "status-badge";
+      badge.textContent = "not scraped";
+      info.appendChild(badge);
+    }
+    card.appendChild(info);
+
+    const actions = document.createElement("div");
+    actions.className = "game-actions";
+
+    const rescrapeBtn = document.createElement("button");
+    rescrapeBtn.textContent = "Rescrape";
+    rescrapeBtn.title = "Re-fetch metadata/art for just this game, ignoring 'only fetch missing'.";
+    rescrapeBtn.addEventListener("click", async () => {
+      if (!platform) {
+        showLibraryError("This system has no platform mapped -- set one in the Systems tab first.");
+        return;
+      }
+      rescrapeBtn.disabled = true;
+      try {
+        const { job_id } = await api("/api/jobs", {
+          method: "POST",
+          body: JSON.stringify({
+            systems: [{ folder, platform, rom_filename: game.filename }],
+            only_missing: false,
+            unpack: true,
+          }),
+        });
+        focusTab("systems"); // job progress panel lives there -- otherwise it'd start invisibly
+        watchJob(job_id);
+      } catch (e) {
+        showLibraryError(e.message);
+      } finally {
+        rescrapeBtn.disabled = false;
+      }
+    });
+    actions.appendChild(rescrapeBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.className = "danger";
+    delBtn.title = "Permanently deletes this ROM and its scraped art.";
+    delBtn.addEventListener("click", async () => {
+      if (!confirm(`Permanently delete "${game.filename}" (and its scraped art) from "${folder}"? This cannot be undone.`)) return;
+      delBtn.disabled = true;
+      try {
+        await api(`/api/systems/${encodeURIComponent(folder)}/games/${encodeURIComponent(game.filename)}`, { method: "DELETE" });
+        await loadLibrary();
+      } catch (e) {
+        showLibraryError(e.message);
+        delBtn.disabled = false;
+      }
+    });
+    actions.appendChild(delBtn);
+
+    card.appendChild(actions);
+    grid.appendChild(card);
+  }
+}
+
+$("#library-system").addEventListener("change", loadLibrary);
+$("#library-reload-btn").addEventListener("click", loadLibrary);
+$("#library-filter").addEventListener("input", renderLibrary);
 
 // ---------- device config (Knulli/batocera.conf) ----------
 let deviceConfigEntries = null; // null = not loaded yet
@@ -485,10 +635,7 @@ async function loadHistory() {
 
 async function watchExistingJob(jobId) {
   const j = await api(`/api/jobs/${jobId}`);
-  $$(".tab-btn").forEach((b) => b.classList.remove("active"));
-  $$(".tab").forEach((t) => t.classList.remove("active"));
-  $('.tab-btn[data-tab="systems"]').classList.add("active");
-  $("#tab-systems").classList.add("active");
+  focusTab("systems");
   $("#job-panel").classList.remove("hidden");
   $("#job-title").textContent = `Job #${j.id} (${j.status})`;
   $("#job-log").textContent = j.log;
