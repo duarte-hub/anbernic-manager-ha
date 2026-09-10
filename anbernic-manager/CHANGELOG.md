@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.4
+
+- The SMB mount capability error persists even with `full_access`,
+  `apparmor: false`, and Protection mode disabled. Added a startup
+  diagnostic log of the container's actual Linux capabilities
+  (decoded from `/proc/self/status`) and AppArmor confinement state,
+  to pin down what Supervisor is actually granting at runtime.
+
 ## 0.1.3
 
 - Fix `mount failed (exit 2): Unable to apply new capability set` when

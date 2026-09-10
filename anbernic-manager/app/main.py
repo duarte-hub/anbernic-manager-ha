@@ -67,8 +67,56 @@ def _load_ha_options() -> None:
         storage.update_settings(patch)
 
 
+# Linux capability bit -> name (see capability(7)), just enough to decode
+# the hex masks in /proc/self/status for the diagnostic log below.
+_CAPABILITY_NAMES = {
+    0: "CHOWN", 1: "DAC_OVERRIDE", 2: "DAC_READ_SEARCH", 3: "FOWNER",
+    4: "FSETID", 5: "KILL", 6: "SETGID", 7: "SETUID", 8: "SETPCAP",
+    9: "LINUX_IMMUTABLE", 10: "NET_BIND_SERVICE", 11: "NET_BROADCAST",
+    12: "NET_ADMIN", 13: "NET_RAW", 14: "IPC_LOCK", 15: "IPC_OWNER",
+    16: "SYS_MODULE", 17: "SYS_RAWIO", 18: "SYS_CHROOT", 19: "SYS_PTRACE",
+    20: "SYS_PACCT", 21: "SYS_ADMIN", 22: "SYS_BOOT", 23: "SYS_NICE",
+    24: "SYS_RESOURCE", 25: "SYS_TIME", 26: "SYS_TTY_CONFIG", 27: "MKNOD",
+    28: "LEASE", 29: "AUDIT_WRITE", 30: "AUDIT_CONTROL", 31: "SETFCAP",
+    32: "MAC_OVERRIDE", 33: "MAC_ADMIN", 34: "SYSLOG", 35: "WAKE_ALARM",
+    36: "BLOCK_SUSPEND", 37: "AUDIT_READ", 38: "PERFMON", 39: "BPF",
+    40: "CHECKPOINT_RESTORE",
+}
+
+
+def _decode_cap_mask(hex_mask: str) -> list[str]:
+    bits = int(hex_mask, 16)
+    return [name for bit, name in _CAPABILITY_NAMES.items() if bits & (1 << bit)]
+
+
+def _log_security_context() -> None:
+    """One-time diagnostic: log the container's actual Linux capabilities
+    and AppArmor confinement, since config.yaml options like full_access
+    / apparmor / Protection mode don't reliably tell you what a given
+    Supervisor version actually applied -- this reads it straight from
+    the kernel so it can be confirmed from the app's own log."""
+    try:
+        status = Path("/proc/self/status").read_text()
+        caps = {}
+        for line in status.splitlines():
+            if line.startswith(("CapInh:", "CapPrm:", "CapEff:", "CapBnd:", "CapAmb:")):
+                key, value = line.split(":")
+                caps[key.strip()] = value.strip()
+        for key, value in caps.items():
+            log.info("security: %s=%s -> %s", key, value, _decode_cap_mask(value))
+    except OSError as e:
+        log.warning("security: could not read /proc/self/status: %s", e)
+
+    try:
+        profile = Path("/proc/self/attr/current").read_text().strip()
+        log.info("security: apparmor profile = %r", profile or "(empty/unconfined)")
+    except OSError as e:
+        log.info("security: could not read apparmor profile (%s) -- likely no AppArmor on this host", e)
+
+
 @app.on_event("startup")
 async def on_startup() -> None:
+    _log_security_context()
     storage.init_db()
     _load_ha_options()
     skyscraper.write_config()
