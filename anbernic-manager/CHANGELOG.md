@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.7
+
+- Fix the jobs WebSocket getting rejected (403) under Home Assistant
+  Ingress: the double-slash-path fix from 0.1.2 only patched HTTP
+  requests (`@app.middleware("http")` doesn't run for WebSocket
+  upgrades at all). Replaced it with a raw ASGI middleware that
+  normalizes both HTTP and WebSocket scopes.
+- Add `GET /api/jobs/current` and have the page call it on load, so
+  reopening the Ingress panel while a job is still running reconnects
+  to it (log seeded from history) instead of only surfacing "a job is
+  already running" with no way to see its progress.
+
 ## 0.1.6
 
 - Fix "Scrape selected"/"Scrape all missing" appearing to do nothing:

@@ -16,7 +16,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -36,16 +36,28 @@ STATIC_DIR = Path(__file__).parent / "static"
 HA_OPTIONS_PATH = Path("/data/options.json")
 
 
-@app.middleware("http")
-async def collapse_duplicate_slashes(request: Request, call_next):
-    """Home Assistant Ingress requests the root page as `//` (it appends
-    a path separator to an already-absolute sub-path), which Starlette
-    treats as distinct from `/` and 404s. Normalize before routing."""
-    path = request.scope["path"]
-    collapsed = re.sub(r"/{2,}", "/", path)
-    if collapsed != path:
-        request.scope["path"] = collapsed
-    return await call_next(request)
+class CollapseDuplicateSlashes:
+    """Home Assistant Ingress requests paths with a doubled leading slash
+    (e.g. `//` for the root page, `//ws/jobs/3` for the jobs WebSocket) --
+    Starlette treats that as distinct from the single-slash route and
+    404s/403s it. This is raw ASGI (not @app.middleware("http")) because
+    that decorator only wraps HTTP requests -- WebSocket upgrades bypass
+    it entirely, so the jobs WebSocket kept getting rejected even after
+    the HTTP version of this fix landed."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            path = scope.get("path", "")
+            collapsed = re.sub(r"/{2,}", "/", path)
+            if collapsed != path:
+                scope["path"] = collapsed
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(CollapseDuplicateSlashes)
 
 
 def _load_ha_options() -> None:
@@ -249,6 +261,14 @@ async def post_job(body: JobIn) -> dict[str, Any]:
 @app.get("/api/jobs")
 async def get_jobs() -> list[dict[str, Any]]:
     return storage.list_jobs()
+
+
+@app.get("/api/jobs/current")
+async def get_current_job() -> dict[str, Any]:
+    """So the page can reconnect to an already-running job after a reload
+    or reopening the Ingress panel, instead of only being told 'a job is
+    already running' with no way to see its progress."""
+    return {"job_id": jobs.current_job_id() if jobs.is_running() else None}
 
 
 @app.get("/api/jobs/{job_id}")

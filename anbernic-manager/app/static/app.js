@@ -204,7 +204,7 @@ function setJobStatus(text, cls) {
   badge.className = "status-badge" + (cls ? ` status-${cls}` : "");
 }
 
-function watchJob(jobId) {
+async function watchJob(jobId) {
   const panel = $("#job-panel");
   const progressEl = $("#job-progress");
   panel.classList.remove("hidden");
@@ -213,6 +213,23 @@ function watchJob(jobId) {
   renderJobLog();
   progressEl.textContent = "starting...";
   setJobStatus("running", "running");
+
+  try {
+    // Reconnecting to an already-running (or just-finished) job: seed the
+    // log from what's already recorded instead of starting blank.
+    const existing = await api(`/api/jobs/${jobId}`);
+    if (existing.log) {
+      jobLogLines = existing.log.split("\n").filter((l) => l.length > 0);
+      renderJobLog();
+    }
+    if (existing.status !== "running") {
+      setJobStatus(existing.status, existing.status === "completed" ? "done" : existing.status);
+      progressEl.textContent = existing.summary ? JSON.stringify(existing.summary) : "";
+      return; // already finished -- no point opening a WebSocket for it
+    }
+  } catch (e) {
+    // fall through to live updates only
+  }
 
   // Resolve relative to the current document (not just location.host) so
   // this still lands on the right path behind Home Assistant Ingress.
@@ -338,3 +355,9 @@ async function watchExistingJob(jobId) {
 // ---------- init ----------
 loadSystems();
 loadSettings();
+
+// Reconnect to an already-running job (e.g. after reopening the Ingress
+// panel) instead of leaving no visible sign it's running.
+api("/api/jobs/current").then(({ job_id }) => {
+  if (job_id != null) watchJob(job_id);
+});
