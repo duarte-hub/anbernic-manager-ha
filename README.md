@@ -33,6 +33,19 @@ but not built yet.
   loaded that system before the scrape finished. This button re-writes it
   from Skyscraper's local cache in a couple of seconds, no network calls,
   no data lost.
+- **Delete empty system folders**: a system with 0 ROMs gets a "Delete
+  empty folder" button that removes it from the share. Only ever shown
+  (and only ever allowed server-side) for folders with zero ROMs -- it
+  refuses if anything's actually in there.
+- **Device tab**: reads and writes Knulli's `system/batocera.conf`
+  directly off the share root as an editable key/value table. Only shows
+  keys that already exist in your file (plus whatever you add), and
+  disabling a key comments it out rather than deleting the line -- same
+  semantics the device itself uses, and it's reversible. This is a raw
+  editor, not a guided settings menu: there's no canonical list of what
+  every key does, so it only ever shows/edits what's actually in your
+  file. See [Batocera's config syntax reference](https://wiki.batocera.org/batocera_conf_syntax)
+  for key naming conventions if you're adding new ones.
 
 ## Installing as a Home Assistant app (Supervisor)
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0
+
+- New **Delete empty folder** action per system with 0 ROMs (Systems
+  tab) -- removes it from the share. Confirmed client-side and
+  re-checked server-side (refuses if the folder actually has ROMs in
+  it); irreversible.
+- New **Device** tab: reads/writes Knulli's `system/batocera.conf`
+  (configurable via a new "Device config file" setting) as an
+  editable key/value table, round-tripping every other line in the
+  file untouched. Disabling a key comments it out rather than
+  deleting it, matching the device's own semantics. Only shows keys
+  that already exist in the file, plus a form to add new ones --
+  deliberately not a guided settings menu, since there's no reliable
+  source for what every EmulationStation menu option's underlying key
+  actually is.
+
 ## 0.1.7
 
 - Fix the jobs WebSocket getting rejected (403) under Home Assistant

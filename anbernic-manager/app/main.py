@@ -13,6 +13,7 @@ import asyncio
 import json
 import logging
 import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+import deviceconfig
 import jobs
 import platforms as platforms_mod
 import skyscraper
@@ -145,6 +147,7 @@ class SettingsIn(BaseModel):
     smb_password: str | None = None
     smb_domain: str | None = None
     roms_subdir: str | None = None
+    device_config_path: str | None = None
     region_priority: str | None = None
     unpack: bool | None = None
     only_missing_default: bool | None = None
@@ -230,6 +233,74 @@ async def rewrite_gamelist(folder: str) -> dict[str, Any]:
     lines: list[str] = []
     log_text = await skyscraper.run_gamelist_pass(system_dir, platform, lines.append)
     return {"ok": True, "log": log_text}
+
+
+@app.delete("/api/systems/{folder}")
+async def delete_system_folder(folder: str) -> dict[str, Any]:
+    """Deletes a system folder from the share -- only ever an *empty*
+    one (0 ROMs, recomputed here rather than trusting the client's
+    cached count), since this removes it and anything already scraped
+    into it permanently."""
+    if not folder or "/" in folder or folder in (".", ".."):
+        raise HTTPException(400, "Invalid folder name.")
+    try:
+        source_root = await skyscraper.ensure_source_ready()
+    except skyscraper.SourceError as e:
+        raise HTTPException(400, str(e))
+    system_dir = skyscraper.roms_root(source_root) / folder
+    if not system_dir.is_dir():
+        raise HTTPException(404, f"{system_dir} not found.")
+    rom_count = skyscraper.count_roms(system_dir)
+    if rom_count != 0:
+        raise HTTPException(400, f"'{folder}' has {rom_count} ROM(s) -- refusing to delete a non-empty folder.")
+    shutil.rmtree(system_dir)
+    return {"ok": True}
+
+
+# ---------- device config (Knulli/batocera.conf) ----------
+
+class DeviceConfigSet(BaseModel):
+    key: str
+    value: str
+    enabled: bool = True
+
+
+async def _read_device_config() -> tuple[Path, list[dict[str, Any]]]:
+    try:
+        source_root = await skyscraper.ensure_source_ready()
+    except skyscraper.SourceError as e:
+        raise HTTPException(400, str(e))
+    path = source_root / storage.get_settings()["device_config_path"]
+    if not path.is_file():
+        raise HTTPException(404, f"{path} not found on the share.")
+    return path, deviceconfig.parse(path.read_text(errors="replace"))
+
+
+@app.get("/api/device-config")
+async def get_device_config() -> dict[str, Any]:
+    path, entries = await _read_device_config()
+    return {"path": str(path), "entries": deviceconfig.public_entries(entries)}
+
+
+@app.put("/api/device-config")
+async def set_device_config(body: DeviceConfigSet) -> dict[str, Any]:
+    path, entries = await _read_device_config()
+    entries = deviceconfig.upsert(entries, body.key, body.value, body.enabled)
+    path.write_text(deviceconfig.serialize(entries))
+    return {"entries": deviceconfig.public_entries(entries)}
+
+
+@app.delete("/api/device-config/{key}")
+async def disable_device_config(key: str) -> dict[str, Any]:
+    """Disables (comments out) a key rather than deleting the line --
+    mirrors the device's own semantics for a disabled setting, and keeps
+    the previously-set value on the line in case it's re-enabled later."""
+    path, entries = await _read_device_config()
+    if deviceconfig.find(entries, key) is None:
+        raise HTTPException(404, f"'{key}' not found in {path}.")
+    entries = deviceconfig.set_enabled(entries, key, False)
+    path.write_text(deviceconfig.serialize(entries))
+    return {"entries": deviceconfig.public_entries(entries)}
 
 
 # ---------- jobs ----------

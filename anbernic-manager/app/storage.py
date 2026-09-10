@@ -26,6 +26,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "smb_password": "",
     "smb_domain": "",
     "roms_subdir": "roms",
+    "device_config_path": "system/batocera.conf",
     "region_priority": "us,wor,eu,ss,uk,jp,au",
     "unpack": True,
     "only_missing_default": True,

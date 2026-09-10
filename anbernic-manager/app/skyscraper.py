@@ -84,7 +84,7 @@ def roms_root(source_root: Path) -> Path:
     return source_root / s["roms_subdir"]
 
 
-def _count_roms(system_dir: Path) -> int:
+def count_roms(system_dir: Path) -> int:
     n = 0
     try:
         for entry in system_dir.iterdir():
@@ -119,7 +119,7 @@ def scan_systems() -> list[dict]:
     for entry in sorted(root.iterdir()):
         if not entry.is_dir() or entry.name.lower() in IGNORE_FOLDERS or entry.name.startswith("."):
             continue
-        rom_count = _count_roms(entry)
+        rom_count = count_roms(entry)
         if rom_count == 0:
             continue
         override = overrides.get(entry.name)

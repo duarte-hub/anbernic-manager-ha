@@ -11,6 +11,7 @@
   <h1>🕹️ Anbernic Manager</h1>
   <nav>
     <button class="tab-btn active" data-tab="systems">Systems</button>
+    <button class="tab-btn" data-tab="device">Device</button>
     <button class="tab-btn" data-tab="settings">Settings</button>
     <button class="tab-btn" data-tab="history">History</button>
   </nav>
@@ -60,6 +61,32 @@
     </div>
   </section>
 
+  <section id="tab-device" class="tab">
+    <p class="dim">
+      Reads and writes Knulli's own settings file directly on the share.
+      Only keys that already exist in your file are shown, plus whatever
+      you add below -- nothing here is guessed at.
+    </p>
+    <div class="toolbar">
+      <button id="device-reload-btn">Reload from device</button>
+      <input type="text" id="device-filter" placeholder="Filter by key...">
+    </div>
+    <div id="device-error" class="banner error hidden"></div>
+    <p id="device-path" class="dim"></p>
+    <table id="device-table">
+      <thead>
+        <tr><th>On</th><th>Key</th><th>Value</th></tr>
+      </thead>
+      <tbody id="device-body"></tbody>
+    </table>
+
+    <form id="device-add-form" class="toolbar">
+      <input type="text" id="device-add-key" placeholder="key, e.g. global.retroarch.video_hard_sync" required>
+      <input type="text" id="device-add-value" placeholder="value, e.g. true" required>
+      <button type="submit" class="primary">Add setting</button>
+    </form>
+  </section>
+
   <section id="tab-settings" class="tab">
     <form id="settings-form">
       <fieldset>
@@ -80,6 +107,7 @@
         <button type="button" id="test-smb-btn">Test connection</button>
         <span id="test-smb-result"></span>
         <label>roms/ subfolder <input type="text" name="roms_subdir" placeholder="roms"></label>
+        <label>Device config file (relative to share root) <input type="text" name="device_config_path" placeholder="system/batocera.conf"></label>
       </fieldset>
 
       <fieldset>

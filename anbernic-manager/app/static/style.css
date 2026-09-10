@@ -112,3 +112,16 @@ fieldset label { display: block; margin-bottom: 10px; font-size: 13px; color: va
 fieldset input, fieldset select { display: block; width: 100%; max-width: 420px; margin-top: 4px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; font-size: 13px; }
 
 #settings-saved, #test-ss-result, #test-smb-result { margin-left: 10px; font-size: 13px; color: var(--accent-2); }
+
+.dim { color: var(--text-dim); font-size: 13px; }
+
+button.danger { border-color: var(--danger); color: var(--danger); }
+button.danger:hover { background: rgba(255,107,107,.12); }
+
+.toolbar input[type="text"] { width: auto; flex: 1; min-width: 160px; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+
+#device-table td, #device-table th { vertical-align: middle; }
+#device-table input[type="text"] { width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+.device-key { font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-dim); }
+tr.device-comment td { color: var(--text-dim); font-size: 12px; font-style: italic; padding-top: 14px; border-bottom: none; }
+tr.device-disabled { opacity: 0.55; }

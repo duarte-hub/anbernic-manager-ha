@@ -21,6 +21,7 @@ $$(".tab-btn").forEach((btn) => {
     btn.classList.add("active");
     $(`#tab-${btn.dataset.tab}`).classList.add("active");
     if (btn.dataset.tab === "history") loadHistory();
+    if (btn.dataset.tab === "device" && deviceConfigEntries === null) loadDeviceConfig();
   });
 });
 
@@ -106,6 +107,26 @@ function renderSystems() {
       }
     });
     actionTd.appendChild(fixBtn);
+
+    if (sys.rom_count === 0) {
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "Delete empty folder";
+      delBtn.className = "danger";
+      delBtn.title = "Permanently deletes this folder from the share -- only shown because it has 0 ROMs.";
+      delBtn.addEventListener("click", async () => {
+        if (!confirm(`Permanently delete the empty folder "${sys.folder}" from the share? This cannot be undone.`)) return;
+        delBtn.disabled = true;
+        try {
+          await api(`/api/systems/${encodeURIComponent(sys.folder)}`, { method: "DELETE" });
+          await loadSystems();
+        } catch (e) {
+          showSystemsError(e.message);
+          delBtn.disabled = false;
+        }
+      });
+      actionTd.appendChild(delBtn);
+    }
+
     tr.appendChild(actionTd);
 
     body.appendChild(tr);
@@ -321,6 +342,128 @@ $("#test-smb-btn").addEventListener("click", async () => {
     el.textContent = r.message;
   } catch (e) {
     el.textContent = e.message;
+  }
+});
+
+// ---------- device config (Knulli/batocera.conf) ----------
+let deviceConfigEntries = null; // null = not loaded yet
+
+function showDeviceError(message) {
+  const el = $("#device-error");
+  el.textContent = message;
+  el.classList.remove("hidden");
+}
+
+async function loadDeviceConfig() {
+  $("#device-error").classList.add("hidden");
+  try {
+    const data = await api("/api/device-config");
+    deviceConfigEntries = data.entries;
+    $("#device-path").textContent = data.path;
+    renderDeviceConfig();
+  } catch (e) {
+    deviceConfigEntries = [];
+    showDeviceError(e.message);
+  }
+}
+
+function renderDeviceConfig() {
+  const body = $("#device-body");
+  body.innerHTML = "";
+  const filter = $("#device-filter").value.trim().toLowerCase();
+  for (const entry of deviceConfigEntries || []) {
+    if (entry.type === "comment") {
+      if (filter) continue; // comments aren't searchable, hide while filtering
+      const tr = document.createElement("tr");
+      tr.className = "device-comment";
+      const td = document.createElement("td");
+      td.colSpan = 3;
+      td.textContent = entry.text;
+      tr.appendChild(td);
+      body.appendChild(tr);
+      continue;
+    }
+    if (filter && !entry.key.toLowerCase().includes(filter)) continue;
+
+    const tr = document.createElement("tr");
+    if (!entry.enabled) tr.className = "device-disabled";
+
+    const onTd = document.createElement("td");
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = entry.enabled;
+    cb.title = entry.enabled ? "Uncheck to disable this setting" : "Re-enable this setting";
+    cb.addEventListener("change", async () => {
+      cb.disabled = true;
+      try {
+        if (cb.checked) {
+          await api("/api/device-config", {
+            method: "PUT",
+            body: JSON.stringify({ key: entry.key, value: entry.value, enabled: true }),
+          });
+        } else {
+          await api(`/api/device-config/${encodeURIComponent(entry.key)}`, { method: "DELETE" });
+        }
+        entry.enabled = cb.checked;
+        tr.className = entry.enabled ? "" : "device-disabled";
+      } catch (e) {
+        showDeviceError(e.message);
+        cb.checked = !cb.checked;
+      } finally {
+        cb.disabled = false;
+      }
+    });
+    onTd.appendChild(cb);
+    tr.appendChild(onTd);
+
+    const keyTd = document.createElement("td");
+    keyTd.textContent = entry.key;
+    keyTd.className = "device-key";
+    tr.appendChild(keyTd);
+
+    const valTd = document.createElement("td");
+    const valInput = document.createElement("input");
+    valInput.type = "text";
+    valInput.value = entry.value;
+    valInput.addEventListener("change", async () => {
+      valInput.disabled = true;
+      try {
+        await api("/api/device-config", {
+          method: "PUT",
+          body: JSON.stringify({ key: entry.key, value: valInput.value, enabled: entry.enabled }),
+        });
+        entry.value = valInput.value;
+      } catch (e) {
+        showDeviceError(e.message);
+        valInput.value = entry.value;
+      } finally {
+        valInput.disabled = false;
+      }
+    });
+    valTd.appendChild(valInput);
+    tr.appendChild(valTd);
+
+    body.appendChild(tr);
+  }
+}
+
+$("#device-reload-btn").addEventListener("click", loadDeviceConfig);
+$("#device-filter").addEventListener("input", renderDeviceConfig);
+
+$("#device-add-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const keyEl = $("#device-add-key");
+  const valEl = $("#device-add-value");
+  try {
+    await api("/api/device-config", {
+      method: "PUT",
+      body: JSON.stringify({ key: keyEl.value.trim(), value: valEl.value, enabled: true }),
+    });
+    keyEl.value = "";
+    valEl.value = "";
+    await loadDeviceConfig();
+  } catch (e) {
+    showDeviceError(e.message);
   }
 });
 
