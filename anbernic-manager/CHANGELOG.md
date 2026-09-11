@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.3
+
+- Fix intermittently missing artwork in the Library tab (and other
+  flaky "sometimes a retry fixes it" failures touching the ROM
+  source): `mount_smb()` unconditionally unmounted and remounted the
+  CIFS share on every call, and `ensure_source_ready()` calls it on
+  every request. The Library grid fires many concurrent image
+  requests, each racing the others' unmount/remount of the one shared
+  mount point -- a request could land mid-teardown and 404. Mounting
+  is now idempotent (a live mount is left alone) and serialized with a
+  lock; "Test connection" still forces a genuine fresh mount via a new
+  `force=True` param, since that button exists specifically to
+  validate the currently-typed credentials.
+
 ## 0.3.2
 
 - Security fix: path traversal via the `{folder}`/`{filename}` URL

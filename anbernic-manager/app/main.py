@@ -170,7 +170,12 @@ async def post_settings(body: SettingsIn) -> dict[str, Any]:
 @app.post("/api/settings/test-smb")
 async def test_smb() -> dict[str, Any]:
     s = storage.get_settings()
-    result = await smb.mount_smb(s["smb_host"], s["smb_share"], s["smb_username"], s["smb_password"], s["smb_domain"])
+    # force=True: this button exists to validate the currently-typed
+    # credentials specifically, so it must always do a genuine fresh
+    # mount rather than short-circuiting on an already-live one.
+    result = await smb.mount_smb(
+        s["smb_host"], s["smb_share"], s["smb_username"], s["smb_password"], s["smb_domain"], force=True
+    )
     if result.ok:
         try:
             n = len(list(Path(smb.MOUNT_POINT).iterdir()))
